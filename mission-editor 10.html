@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpCom Mission Editor</title>
+  <style>
+    :root {
+      --gap: 8px;
+      --accent: #22496c;
+      --ok: #1b7f4e;
+      --warn: #b84a1b;
+      --border: #d3d8df;
+      --bg-lite: #f7f9fb;
+      --muted: #65728a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      margin: 0;
+      padding: 20px;
+      color: #1a2433;
+      background: white;
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h2 {
+      margin: 0 0 16px;
+      color: var(--accent);
+    }
+    form > fieldset {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      margin: 0 0 14px;
+      background: var(--bg-lite);
+    }
+    legend {
+      padding: 0 6px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .row {
+      display: flex;
+      gap: var(--gap);
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    label.inline {
+      min-width: 120px;
+      text-align: right;
+      padding-right: 6px;
+      user-select: none;
+      font-weight: 600;
+    }
+    input[type="text"],
+    input[type="datetime-local"],
+    select,
+    textarea {
+      font-size: 1rem;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: white;
+      color: #111;
+    }
+    input[type="text"],
+    input[type="datetime-local"],
+    select {
+      height: 34px;
+    }
+    .wide {
+      flex: 1 1 350px;
+      min-width: 220px;
+    }
+    /* Units tags */
+    #tagsContainer {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border: 1px solid #b5d5b0;
+      background: #e8f6ea;
+      color: #1f5a2e;
+      border-radius: 999px;
+      line-height: 1;
+      user-select: none;
+    }
+    .tag .remove {
+      display: inline-block;
+      font-weight: 700;
+      cursor: pointer;
+      color: #2b6c3c;
+    }
+    .tag.locked .remove {
+      display: none;
+    }
+    /* Objectives & Contingencies */
+    .listHeader {
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .slot {
+      display: flex;
+      gap: var(--gap);
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    .slot .idx {
+      width: 28px;
+      text-align: right;
+      line-height: 30px;
+      user-select: none;
+      font-weight: 700;
+    }
+    .slot textarea {
+      flex: 1 1 auto;
+      min-height: 32px;
+      min-width: 0;
+      width: 100%;
+      resize: vertical;
+      overflow: hidden;
+      line-height: 1.25;
+      transition: height 0.1s;
+    }
+    .slot .priorityWrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .slot button.removeBtn {
+      font-size: 1rem;
+      cursor: pointer;
+      background: #fee;
+      border: 1px solid #e88;
+      border-radius: 4px;
+      padding: 0 8px;
+      height: 32px;
+      line-height: 30px;
+      min-width: 2em;
+    }
+    .adder {
+      margin-top: 4px;
+      display: inline-flex;
+      gap: 8px;
+    }
+    .adder button {
+      cursor: pointer;
+      padding: 4px 10px;
+      background: #e4f4e8;
+      border: 1px solid #b5d5b0;
+      border-radius: 4px;
+    }
+    /* Form actions */
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .actions button {
+      cursor: pointer;
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: white;
+      font-weight: 600;
+    }
+    #commit {
+      background: #e9f3ff;
+      border-color: #c7dfff;
+      color: #0f4473;
+    }
+    #reset {
+      background: #fff3e9;
+      border-color: #ffd8b9;
+      color: #7a3a0d;
+    }
+    .actions button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 8px;
+      color: var(--ok);
+      min-height: 1.2em;
+    }
+    #result.error {
+      color: #b00020;
+    }
+    #midDisplay {
+      margin-top: 14px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Mission Editor</h2>
+
+    <form id="missionForm" autocomplete="off">
+      <fieldset>
+        <legend>Mission Basics</legend>
+        <div class="row">
+          <label class="inline" for="missionType">Mission Type</label>
+          <select id="missionType" name="missionType" class="wide" required>
+            <option value="" disabled selected>Select Mission Type</option>
+            <option value="Assault">Assault</option>
+            <option value="Capture">Capture</option>
+            <option value="Hunt">Hunt</option>
+            <option value="Recon">Recon</option>
+            <option value="Recovery">Recovery</option>
+          </select>
+        </div>
+        <div class="row">
+          <label class="inline" for="location">Location</label>
+          <input type="text" id="location" name="location" class="wide" placeholder="e.g., Sector 7G, Akari Basin" required>
+        </div>
+        <div class="row">
+          <label class="inline" for="setTime">Set Time (Zulu)</label>
+          <input type="datetime-local" id="setTime" name="setTime" class="wide" required step="60">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Tasked Units</legend>
+        <div class="row">
+          <label class="inline">Assign</label>
+          <div class="row" style="flex:1 1 500px; padding-left:0;">
+            <select id="platoonSelect">
+              <option value="">Select Platoon</option>
+              <option value="Agni">Agni Platoon</option>
+              <option value="Pele">Pele Platoon</option>
+              <option value="Vulcan">Vulcan Platoon</option>
+            </select>
+            <select id="squadSelect" style="display:none;">
+              <option value="">Select Squad</option>
+              <option value="Alpha">Alpha Squad</option>
+              <option value="Bravo">Bravo Squad</option>
+              <option value="Charlie">Charlie Squad</option>
+            </select>
+            <select id="fireTeamSelect" style="display:none;">
+              <option value="">Select Fireteam</option>
+              <option value="1">Fireteam 1</option>
+              <option value="2">Fireteam 2</option>
+              <option value="3">Fireteam 3</option>
+            </select>
+            <button type="button" id="addUnitBtn" title="Add unit">Add</button>
+          </div>
+        </div>
+        <div class="row">
+          <label class="inline" aria-hidden="true"></label>
+          <div id="tagsContainer" class="wide" aria-live="polite"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Objectives</legend>
+        <div class="listHeader">At least one objective is required</div>
+        <div id="objectivesContainer"></div>
+        <div class="adder">
+          <button type="button" id="addObjectiveBtn" title="Add objective">+ Add Objective</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Contingencies</legend>
+        <div class="listHeader">Optional (empty items are ignored)</div>
+        <div id="contingenciesContainer"></div>
+        <div class="adder">
+          <button type="button" id="addContingencyBtn" title="Add contingency">+ Add Contingency</button>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button type="button" id="reset">Reset</button>
+        <button type="button" id="commit">COMMIT</button>
+      </div>
+      <div id="result" role="status" aria-live="polite"></div>
+    </form>
+
+    <div id="midDisplay"></div>
+  </div>
+
+  <script type="module">
+    // Firebase SDKs (replace with your project's config)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      runTransaction,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "placeholder",
+      authDomain: "placeholder",
+      projectId: "placeholder",
+      storageBucket: "placeholder",
+      messagingSenderId: "placeholder",
+      appId: "placeholder",
+      measurementId: "placeholder"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // DOM
+    const form               = document.getElementById('missionForm');
+    const missionType        = document.getElementById('missionType');
+    const locationInput      = document.getElementById('location');
+    const setTimeInput       = document.getElementById('setTime');
+
+    const platoonSelect      = document.getElementById('platoonSelect');
+    const squadSelect        = document.getElementById('squadSelect');
+    const fireTeamSelect     = document.getElementById('fireTeamSelect');
+    const addUnitButton      = document.getElementById('addUnitBtn');
+    const tagsContainer      = document.getElementById('tagsContainer');
+
+    const objectivesContainer     = document.getElementById('objectivesContainer');
+    const addObjectiveBtn         = document.getElementById('addObjectiveBtn');
+    const contingenciesContainer  = document.getElementById('contingenciesContainer');
+    const addContingencyBtn       = document.getElementById('addContingencyBtn');
+
+    const resetButton        = document.getElementById('reset');
+    const commitButton       = document.getElementById('commit');
+    const resultDiv          = document.getElementById('result');
+    const midDisplay         = document.getElementById('midDisplay');
+
+    // State
+    let mode = 'editing'; // 'editing' | 'locked'
+    let saving = false;
+    let currentMID = '';
+
+    // Utils
+    function el(tag, props = {}, children = []) {
+      const node = document.createElement(tag);
+      Object.entries(props).forEach(([k, v]) => {
+        if (k === 'class') node.className = v;
+        else if (k === 'dataset') Object.assign(node.dataset, v);
+        else if (k in node) node[k] = v;
+        else node.setAttribute(k, v);
+      });
+      [].concat(children).forEach(child => {
+        if (child == null) return;
+        node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+      });
+      return node;
+    }
+
+    function autoResizeTextarea(ta) {
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    }
+
+    function attachAutoResize(ta) {
+      ta.addEventListener('input', () => autoResizeTextarea(ta));
+      autoResizeTextarea(ta);
+    }
+
+    // Objectives
+    function createObjectiveSlot(idx, text = '', priority = 'Critical') {
+      const slot = el('div', { class: 'slot objectiveSlot' }, [
+        el('div', { class: 'idx', textContent: idx + '.' }),
+        (() => {
+          const ta = el('textarea', { class: 'objectiveInput', rows: 1, placeholder: 'Enter objective...', value: text });
+          attachAutoResize(ta);
+          return ta;
+        })(),
+        el('div', { class: 'priorityWrap' }, [
+          el('label', { textContent: 'Priority:' }),
+          (() => {
+            const sel = el('select', { class: 'prioritySelect' }, [
+              el('option', { value: 'Critical', textContent: 'Critical', selected: priority === 'Critical' }),
+              el('option', { value: 'Moderate', textContent: 'Moderate', selected: priority === 'Moderate' }),
+              el('option', { value: 'Low', textContent: 'Low', selected: priority === 'Low' })
+            ]);
+            return sel;
+          })()
+        ]),
+        el('button', { type: 'button', class: 'removeBtn removeObjectiveBtn', title: 'Remove objective', textContent: '−' })
+      ]);
+      return slot;
+    }
+
+    function renumberObjectiveSlots() {
+      const slots = objectivesContainer.querySelectorAll('.objectiveSlot');
+      slots.forEach((slot, i) => {
+        slot.querySelector('.idx').textContent = (i + 1) + '.';
+      });
+      slots.forEach(slot => {
+        const btn = slot.querySelector('.removeObjectiveBtn');
+        btn.style.display = (slots.length > 1) ? 'inline-flex' : 'none';
+      });
+    }
+
+    // Contingencies
+    function createContingencySlot(idx, text = '') {
+      const slot = el('div', { class: 'slot contingencySlot' }, [
+        el('div', { class: 'idx', textContent: idx + '.' }),
+        (() => {
+          const ta = el('textarea', { class: 'contingencyInput', rows: 1, placeholder: 'Enter contingency (optional)...', value: text });
+          attachAutoResize(ta);
+          return ta;
+        })(),
+        el('button', { type: 'button', class: 'removeBtn removeContingencyBtn', title: 'Remove contingency', textContent: '−' })
+      ]);
+      return slot;
+    }
+
+    function renumberContingencySlots() {
+      const slots = contingenciesContainer.querySelectorAll('.contingencySlot');
+      slots.forEach((slot, i) => {
+        slot.querySelector('.idx').textContent = (i + 1) + '.';
+      });
+      slots.forEach(slot => {
+        const btn = slot.querySelector('.removeContingencyBtn');
+        btn.style.display = (slots.length > 1) ? 'inline-flex' : 'none';
+      });
+    }
+
+    // Units helpers
+    function showHideUnitSelects() {
+      const p = platoonSelect.value;
+      const s = squadSelect.value;
+      squadSelect.style.display = p ? 'inline-block' : 'none';
+      if (!p) {
+        squadSelect.value = '';
+        fireTeamSelect.style.display = 'none';
+        fireTeamSelect.value = '';
+      } else {
+        fireTeamSelect.style.display = s ? 'inline-block' : 'none';
+        if (!s) fireTeamSelect.value = '';
+      }
+    }
+
+    function unitLabel(platoon, squad, fireteam) {
+      if (!squad) return `${platoon} Platoon`;
+      if (!fireteam) return `${platoon} ${squad} Squad`;
+      return `${platoon} ${squad} Fireteam ${fireteam}`;
+    }
+
+    function addUnitTag(platoon, squad = '', fireteam = '') {
+      // prevent duplicate
+      const exists = Array.from(tagsContainer.querySelectorAll('.tag')).some(t =>
+        t.dataset.platoon === platoon &&
+        (t.dataset.squad || '') === (squad || '') &&
+        (t.dataset.fireteam || '') === (fireteam || '')
+      );
+      if (exists) return;
+
+      // Remove overlapping entries per hierarchy
+      Array.from(tagsContainer.querySelectorAll('.tag')).forEach(tag => {
+        const tp = tag.dataset.platoon;
+        const ts = tag.dataset.squad || '';
+        const tf = tag.dataset.fireteam || '';
+        const isPlatoonTag = !ts && !tf;
+        const isSquadTag = !!ts && !tf;
+        const isFireteamTag = !!ts && !!tf;
+
+        if (!squad && !fireteam) { // new platoon
+          if (tp === platoon) tag.remove();
+        } else if (squad && !fireteam) { // new squad
+          if (tp === platoon && (isPlatoonTag || (isFireteamTag && ts === squad))) tag.remove();
+        } else if (squad && fireteam) { // new fireteam
+          if (tp === platoon && ((isSquadTag && ts === squad) || isPlatoonTag)) tag.remove();
+        }
+      });
+
+      const tag = el('span', {
+        class: 'tag',
+        dataset: { platoon, squad: squad || '', fireteam: fireteam || '' }
+      }, [
+        unitLabel(platoon, squad, fireteam),
+        el('span', { class: 'remove', title: 'Remove', textContent: '×' })
+      ]);
+      tagsContainer.appendChild(tag);
+      updateTagRemovalUI();
+    }
+
+    function updateTagRemovalUI() {
+      tagsContainer.querySelectorAll('.tag').forEach(tag => {
+        tag.classList.toggle('locked', mode === 'locked');
+      });
+    }
+
+    // Mode handling
+    function setMode(nextMode) {
+      mode = nextMode;
+      const allControls = form.querySelectorAll('input, select, textarea, button');
+      if (mode === 'locked') {
+        allControls.forEach(el => el.disabled = true);
+        // Keep Edit/Create New enabled
+        commitButton.disabled = false;
+        resetButton.disabled = false;
+        commitButton.textContent = 'Edit';
+        resetButton.textContent = 'Create New';
+      } else {
+        allControls.forEach(el => el.disabled = false);
+        commitButton.textContent = 'COMMIT';
+        resetButton.textContent = 'Reset';
+      }
+      updateTagRemovalUI();
+      // Ensure remove button visibility is recalculated
+      renumberObjectiveSlots();
+      renumberContingencySlots();
+    }
+
+    // Reset editor completely to a blank editing state
+    function resetEditor() {
+      if (saving) return;
+
+      // 1) Clear simple fields and messages
+      form.reset();
+      resultDiv.textContent = '';
+      resultDiv.classList.remove('error');
+      midDisplay.textContent = '';
+      currentMID = '';
+
+      // 2) Units
+      tagsContainer.replaceChildren();
+      platoonSelect.value = '';
+      squadSelect.value = '';
+      fireTeamSelect.value = '';
+      showHideUnitSelects();
+
+      // 3) Dynamic lists
+      objectivesContainer.replaceChildren();
+      contingenciesContainer.replaceChildren();
+
+      const obj1 = createObjectiveSlot(1, '', 'Critical');
+      objectivesContainer.appendChild(obj1);
+      renumberObjectiveSlots();
+
+      const cont1 = createContingencySlot(1, '');
+      contingenciesContainer.appendChild(cont1);
+      renumberContingencySlots();
+
+      // 4) Switch to editing mode
+      setMode('editing');
+    }
+
+    // Validation
+    function validateForm() {
+      if (!missionType.value || !locationInput.value || !setTimeInput.value) return false;
+      if (tagsContainer.querySelectorAll('.tag').length === 0) return false;
+      const objectiveTexts = Array.from(objectivesContainer.querySelectorAll('.objectiveInput')).map(i => i.value.trim());
+      if (objectiveTexts.length === 0) return false;
+      if (!objectiveTexts.every(txt => txt.length > 0)) return false;
+      return true;
+    }
+
+    // Data collection
+    function collectUnits() {
+      return Array.from(tagsContainer.querySelectorAll('.tag')).map(tag => ({
+        platoon: tag.dataset.platoon,
+        squad: tag.dataset.squad || null,
+        fireteam: tag.dataset.fireteam || null,
+        label: tag.textContent.replace('×', '').trim()
+      }));
+    }
+
+    function collectObjectives() {
+      return Array.from(objectivesContainer.querySelectorAll('.objectiveSlot')).map(slot => ({
+        text: slot.querySelector('.objectiveInput').value.trim(),
+        priority: slot.querySelector('.prioritySelect').value
+      }));
+    }
+
+    function collectContingencies() {
+      return Array.from(contingenciesContainer.querySelectorAll('.contingencyInput'))
+        .map(t => t.value.trim())
+        .filter(Boolean);
+    }
+
+    function localToUTCISOString(localDatetimeValue) {
+      const withSeconds = localDatetimeValue.length === 16 ? localDatetimeValue + ':00' : localDatetimeValue;
+      const d = new Date(withSeconds);
+      if (Number.isNaN(d.getTime())) return null;
+      return d.toISOString();
+    }
+
+    async function getNextMissionCounter() {
+      const counterRef = doc(db, 'Missions', 'MissionCounter');
+      const next = await runTransaction(db, async (tx) => {
+        const snap = await tx.get(counterRef);
+        if (!snap.exists()) {
+          tx.set(counterRef, { counter: 1 });
+          return 1;
+        } else {
+          const newVal = (snap.data().counter || 0) + 1;
+          tx.update(counterRef, { counter: newVal });
+          return newVal;
+        }
+      });
+      return next;
+    }
+
+    async function commitMission() {
+      if (saving) return;
+      if (!validateForm()) {
+        alert('Please complete all required fields, add at least one tasked unit, and ensure objectives are non-empty.');
+        return;
+      }
+      saving = true;
+      commitButton.disabled = true;
+      resetButton.disabled = true;
+      commitButton.textContent = 'Saving…';
+
+      try {
+        const counter = await getNextMissionCounter();
+        const missionId = `MID-${String(counter).padStart(3, '0')}`;
+        currentMID = missionId;
+
+        const unitsTasked = collectUnits();
+        const objectives = collectObjectives();
+        const contingencies = collectContingencies();
+        const setTimeLocal = setTimeInput.value;
+        const setTimeUtc = localToUTCISOString(setTimeLocal);
+        if (!setTimeUtc) throw new Error('Invalid date/time selected');
+
+        const payload = {
+          missionId,
+          missionType: missionType.value,
+          unitsTasked,
+          location: locationInput.value,
+          setTimeLocal,
+          setTimeUtc,
+          objectives,
+          contingencies,
+          status: 'Active',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+
+        await setDoc(doc(db, 'Missions', missionId), payload);
+
+        resultDiv.classList.remove('error');
+        resultDiv.textContent = 'Mission committed successfully!';
+        midDisplay.textContent = `Mission ID: ${missionId}`;
+
+        // Enter locked (post-commit) mode
+        setMode('locked');
+      } catch (err) {
+        console.error(err);
+        resultDiv.classList.add('error');
+        resultDiv.textContent = `Error creating mission: ${err.message || err}`;
+        // Stay in editing mode to allow correcting
+        setMode('editing');
+      } finally {
+        saving = false;
+        commitButton.disabled = false;
+        resetButton.disabled = false;
+        if (mode === 'locked') {
+          commitButton.textContent = 'Edit';
+          resetButton.textContent = 'Create New';
+        } else {
+          commitButton.textContent = 'COMMIT';
+          resetButton.textContent = 'Reset';
+        }
+      }
+    }
+
+    // Event wiring (static)
+
+    // Prevent Enter from submitting the form
+    form.addEventListener('submit', (e) => e.preventDefault());
+
+    platoonSelect.addEventListener('change', showHideUnitSelects);
+    squadSelect.addEventListener('change', showHideUnitSelects);
+
+    addUnitButton.addEventListener('click', () => {
+      const platoon = platoonSelect.value;
+      const squad = squadSelect.value;
+      const fireteam = fireTeamSelect.value;
+      if (!platoon) return;
+      if (squad && fireteam) addUnitTag(platoon, squad, fireteam);
+      else if (squad) addUnitTag(platoon, squad, '');
+      else addUnitTag(platoon, '', '');
+    });
+
+    // Tag remove (delegation)
+    tagsContainer.addEventListener('click', (e) => {
+      if (mode === 'locked') return;
+      const remove = e.target.closest('.remove');
+      if (remove) remove.closest('.tag')?.remove();
+    });
+
+    // Objectives add/remove (delegation)
+    addObjectiveBtn.addEventListener('click', () => {
+      const count = objectivesContainer.querySelectorAll('.objectiveSlot').length;
+      objectivesContainer.appendChild(createObjectiveSlot(count + 1));
+      renumberObjectiveSlots();
+      const ta = objectivesContainer.querySelectorAll('.objectiveSlot textarea');
+      ta[ta.length - 1]?.focus();
+    });
+
+    objectivesContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.removeObjectiveBtn');
+      if (!btn) return;
+      const slots = objectivesContainer.querySelectorAll('.objectiveSlot');
+      if (slots.length <= 1) return;
+      btn.closest('.objectiveSlot')?.remove();
+      renumberObjectiveSlots();
+    });
+
+    // Contingencies add/remove (delegation)
+    addContingencyBtn.addEventListener('click', () => {
+      const count = contingenciesContainer.querySelectorAll('.contingencySlot').length;
+      contingenciesContainer.appendChild(createContingencySlot(count + 1));
+      renumberContingencySlots();
+      const ta = contingenciesContainer.querySelectorAll('.contingencySlot textarea');
+      ta[ta.length - 1]?.focus();
+    });
+
+    contingenciesContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.removeContingencyBtn');
+      if (!btn) return;
+      const slots = contingenciesContainer.querySelectorAll('.contingencySlot');
+      if (slots.length <= 1) {
+        const ta = contingenciesContainer.querySelector('.contingencyInput');
+        if (ta) { ta.value = ''; autoResizeTextarea(ta); }
+        return;
+      }
+      btn.closest('.contingencySlot')?.remove();
+      renumberContingencySlots();
+    });
+
+    // Actions
+    resetButton.addEventListener('click', () => {
+      // In both modes this means "Create New" (when locked) or "Reset" (when editing)
+      resetEditor();
+    });
+
+    commitButton.addEventListener('click', () => {
+      if (saving) return;
+      if (mode === 'locked') {
+        // Edit existing values in the form; next COMMIT creates a new document (per your spec)
+        setMode('editing');
+        resultDiv.textContent = '';
+        // Keep the last MID visible at bottom
+        return;
+      }
+      commitMission();
+    });
+
+    // Initial boot
+    resetEditor(); // sets a clean editing slate
+  </script>
+</body>
+</html>
