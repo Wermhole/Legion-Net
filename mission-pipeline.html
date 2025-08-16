@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mission Pipeline</title>
+    <style>
+        /* Simple CSS styles */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0a0e17;
+            color: #7fdbff;
+            margin: 0;
+            padding: 20px;
+        }
+        #missionList {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .mission-item {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            cursor: pointer;
+        }
+        .mission-item.selected {
+            background-color: #e0e0e0;
+        }
+        #viewButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-family: 'Orbitron', sans-serif;
+            background-color: #7fdbff;
+            color: #0a0e17;
+            border: none;
+            cursor: pointer;
+        }
+        #viewButton:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        .timer {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<h1>Mission Pipeline</h1>
+<ul id="missionList"></ul>
+<button id="viewButton" disabled>View</button>
+<!-- Firebase scripts -->
+<!-- Update Firebase scripts to the latest version -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+    // Initialize Firebase (replace with your Firebase project configuration)
+    const firebaseConfig = {
+        apiKey: "AIzaSyD-JO2AOhXtMgq_I1ij9wQl5G6VPnq3rhw",
+        authDomain: "legionnet-backbone.firebaseapp.com",
+        projectId: "legionnet-backbone",
+        storageBucket: "legionnet-backbone.appspot.com",
+        messagingSenderId: "730376083754",
+        appId: "1:730376083754:web:3eac12d775a80b57efe653",
+        measurementId: "G-XJP486HMKN"
+    };
+    firebase.initializeApp(firebaseConfig);
+    // Get a reference to the Firestore service
+    var db = firebase.firestore();
+    var missionListEl = document.getElementById('missionList');
+    var viewButton = document.getElementById('viewButton');
+    var selectedMission = null;
+
+    // Real-time listener for mission updates
+    function initializeMissionListener() {
+        db.collection("Missions")
+            .orderBy("created")
+            .onSnapshot(function(snapshot) {
+                missionListEl.innerHTML = '';
+                snapshot.forEach(function(doc) {
+                    var mission = doc.data();
+                    mission.id = doc.id;
+                    if (mission.missionId && mission.missionId.startsWith("MID-")) {
+                        addMissionToList(mission);
+                    }
+                });
+                setTimeout(initializeMissionListener, 15000);
+            });
+    }
+
+    // Initial load
+    initializeMissionListener();
+
+    function addMissionToList(mission) {
+        var listItem = document.createElement('li');
+        listItem.className = 'mission-item';
+        listItem.dataset.id = mission.id;
+
+        // Mission ID display
+        var missionIdEl = document.createElement('span');
+        missionIdEl.textContent = mission.missionId + " - ";
+
+        // Status display
+        var statusEl = document.createElement('span');
+        statusEl.textContent = mission.status + " ";
+        statusEl.className = 'mission-status';
+
+        // Timer display
+        var timerEl = document.createElement('span');
+        timerEl.className = 'timer';
+        updateTimer(timerEl, mission);
+
+        listItem.appendChild(missionIdEl);
+        listItem.appendChild(statusEl);
+        listItem.appendChild(timerEl);
+
+        // Click handler
+        listItem.addEventListener('click', function() {
+            document.querySelectorAll('.mission-item').forEach(el => el.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedMission = mission;
+            viewButton.disabled = false;
+        });
+
+        missionListEl.appendChild(listItem);
+    }
+
+    function updateTimer(timerEl, mission) {
+        var status = mission.status;
+        var setTime = mission.setTime;
+        var closeoutTimestamp = mission.closeoutTimestamp;
+
+        var updateInterval;
+
+        if (status === "Pending" || status === "Active") {
+            var missionTime = setTime.toDate();
+
+            function update() {
+                var now = new Date();
+                var diff;
+
+                if (status === "Pending") {
+                    diff = missionTime - now;
+                } else if (status === "Active") {
+                    diff = now - missionTime;
+                }
+
+                if ((status === "Pending" && diff <= 0) || 
+                    (status === "Active" && diff < 0)) {
+                    clearInterval(updateInterval);
+                    timerEl.textContent = "00-00:00:00";
+                    return;
+                }
+
+                var dd = Math.floor(diff / (1000 * 60 * 60 * 24));
+                var hh = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                var mm = Math.floor((diff / (1000 * 60)) % 60);
+                var ss = Math.floor((diff / 1000) % 60);
+
+                timerEl.textContent = dd + '-' +
+                                      ('0' + hh).slice(-2) + ':' +
+                                      ('0' + mm).slice(-2) + ':' +
+                                      ('0' + ss).slice(-2);
+            }
+
+            update();
+            updateInterval = setInterval(update, 1000);
+        } else {
+            if (closeoutTimestamp) {
+                var closeoutTime = closeoutTimestamp.toDate();
+                timerEl.textContent = closeoutTime.toLocaleString();
+            } else {
+                timerEl.textContent = "No Closeout Time";
+            }
+        }
+    }
+
+    // Modified view button handler
+    viewButton.addEventListener('click', function() {
+        if (selectedMission) {
+            window.location.href = `mission-editor%204.html?missionId=${selectedMission.id}`;
+        }
+    });
+
+    // Document click handler
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.mission-item')) {
+            document.querySelectorAll('.mission-item').forEach(el => el.classList.remove('selected'));
+            selectedMission = null;
+            viewButton.disabled = true;
+        }
+    });
+</script>
+</body>
+</html>
