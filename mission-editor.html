@@ -299,6 +299,7 @@
     import {
       getFirestore,
       doc,
+      getDoc,
       setDoc,
       runTransaction,
       serverTimestamp
@@ -673,6 +674,56 @@
       }
     }
 
+    async function loadMission(id) {
+      resetEditor();
+      const missionRef = doc(db, 'Missions', id);
+      const missionSnap = await getDoc(missionRef);
+
+      if (missionSnap.exists()) {
+        const data = missionSnap.data();
+
+        missionType.value = data.missionType || '';
+        locationInput.value = data.location || '';
+        if (data.setTimeLocal) {
+            setTimeInput.value = data.setTimeLocal;
+        }
+
+        tagsContainer.innerHTML = '';
+        if (data.unitsTasked && data.unitsTasked.length > 0) {
+            data.unitsTasked.forEach(unit => {
+                addUnitTag(unit.platoon, unit.squad, unit.fireteam);
+            });
+        }
+
+        objectivesContainer.innerHTML = '';
+        if (data.objectives && data.objectives.length > 0) {
+            data.objectives.forEach((obj, index) => {
+                const slot = createObjectiveSlot(index + 1, obj.text, obj.priority);
+                objectivesContainer.appendChild(slot);
+            });
+            renumberObjectiveSlots();
+        }
+
+        contingenciesContainer.innerHTML = '';
+        if (data.contingencies && data.contingencies.length > 0) {
+            data.contingencies.forEach((con, index) => {
+                const slot = createContingencySlot(index + 1, con);
+                contingenciesContainer.appendChild(slot);
+            });
+            renumberContingencySlots();
+        }
+
+        currentMID = data.missionId;
+        midDisplay.textContent = `Mission ID: ${data.missionId}`;
+        resultDiv.textContent = 'Mission loaded.';
+        setMode('locked');
+
+      } else {
+        resultDiv.textContent = `Error: Mission with ID ${id} not found.`;
+        resultDiv.classList.add('error');
+      }
+    }
+
     // Event wiring (static)
 
     // Prevent Enter from submitting the form
@@ -757,7 +808,14 @@
     });
 
     // Initial boot
-    resetEditor(); // sets a clean editing slate
+    const urlParams = new URLSearchParams(window.location.search);
+    const missionIdFromUrl = urlParams.get('missionId');
+
+    if (missionIdFromUrl) {
+      loadMission(missionIdFromUrl);
+    } else {
+      resetEditor(); // sets a clean editing slate
+    }
   </script>
 </body>
 </html>

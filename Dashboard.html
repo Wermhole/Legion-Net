@@ -188,11 +188,11 @@
                     <span class="current-module-title">No Module Selected</span>
                 </div>
                 <div class="module-content">
-                    <iframe sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+                    <iframe sandbox="allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"></iframe>
                 </div>
                 <button class="module-selector" aria-label="Module selector"></button>
                 <div class="module-menu">
-                    ${['mission-pipeline', 'mission-editor', 'unit-viewer', 
+                    ${['mission-pipeline', 'mission-editor', 'unit-viewer',
                        'intel-feed', 'training-rotations', 'requisition-orders']
                        .map(module => `<button data-module="${module}">${module.replace('-', ' ')}</button>`).join('')}
                 </div>
@@ -226,15 +226,15 @@
             e.preventDefault();
             const afterElement = getDragAfterElement(grid, e.clientX);
             const currentItem = draggedItem;
-            
+
             if(!placeholder) {
                 placeholder = document.createElement('div');
                 placeholder.classList.add('drag-placeholder');
                 grid.appendChild(placeholder);
             }
-            
+
             placeholder.style.height = `${currentItem.offsetHeight}px`;
-            
+
             if(afterElement) {
                 grid.insertBefore(placeholder, afterElement);
             } else {
@@ -253,11 +253,11 @@
 
         function getDragAfterElement(container, x) {
             const items = [...container.querySelectorAll('.module-port:not(.dragging)')];
-            
+
             return items.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
                 const offset = x - box.left - box.width/2;
-                
+
                 if(offset < 0 && offset > closest.offset) {
                     return { offset: offset, element: child };
                 } else {
@@ -272,32 +272,32 @@
                 event.stopPropagation();
                 const modulePort = this.closest('.module-port');
                 const moduleMenu = modulePort.querySelector('.module-menu');
-                
+
                 document.querySelectorAll('.module-menu').forEach(menu => {
                     if (menu !== moduleMenu) menu.style.display = 'none';
                 });
-                
+
                 moduleMenu.style.display = moduleMenu.style.display === 'block' ? 'none' : 'block';
                 this.classList.toggle('active');
             });
         });
 
-        async function loadModuleInPort(modulePort, moduleName) {
+        async function loadModuleInPort(modulePort, moduleName, missionId = null) {
             const iframe = modulePort.querySelector('iframe');
             const title = modulePort.querySelector('.current-module-title');
-            
+
             modulePort.classList.add('loading');
             title.textContent = `Loading ${moduleName.replace('-', ' ')}...`;
-            
+
             try {
                 await new Promise((resolve, reject) => {
                     iframe.onload = resolve;
                     iframe.onerror = reject;
-                    iframe.src = `modules/${moduleName}.html`;
-                    
+                    iframe.src = missionId ? `${moduleName}.html?missionId=${missionId}` : `${moduleName}.html`;
+
                     setTimeout(() => reject(new Error('Load timeout')), 10000);
                 });
-                
+
                 modulePort.classList.remove('loading');
                 modulePort.classList.add('active-module');
                 title.textContent = moduleName.replace('-', ' ');
@@ -312,7 +312,7 @@
                 event.stopPropagation();
                 const modulePort = this.closest('.module-port');
                 const moduleName = this.dataset.module;
-                
+
                 modulePort.querySelector('.module-menu').style.display = 'none';
                 loadModuleInPort(modulePort, moduleName);
             });
@@ -333,6 +333,21 @@
                 document.querySelectorAll('.module-menu').forEach(menu => {
                     menu.style.display = 'none';
                 });
+            }
+        });
+
+        // Listen for messages from child iframes
+        window.addEventListener('message', (event) => {
+            const { type, module, missionId } = event.data;
+
+            if (type === 'loadModule') {
+                const ports = document.querySelectorAll('.module-port');
+                let targetPort = Array.from(ports).find(p => !p.classList.contains('active-module'));
+                if (!targetPort) {
+                    targetPort = ports[0];
+                }
+
+                loadModuleInPort(targetPort, module, missionId);
             }
         });
     </script>

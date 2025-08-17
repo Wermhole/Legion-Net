@@ -175,7 +175,11 @@
     // Modified view button handler
     viewButton.addEventListener('click', function() {
         if (selectedMission) {
-            window.location.href = `mission-editor%204.html?missionId=${selectedMission.id}`;
+            window.parent.postMessage({
+                type: 'loadModule',
+                module: 'mission-editor',
+                missionId: selectedMission.id
+            }, '*');
         }
     });
 
